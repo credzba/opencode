@@ -219,8 +219,16 @@ export const TuiThreadCommand = cmd({
         if (stopped) return
         stopped = true
         process.off("SIGUSR2", reload)
-        await withTimeout(client.call("shutdown", undefined), 5000).catch(() => {})
-        worker.terminate()
+        if (process.platform === "win32") {
+          // On Windows, both worker.terminate() and awaiting the worker's
+          // graceful shutdown destroy the console window — the MCP subprocess
+          // cleanup detaches the process from its console. Fire-and-forget
+          // the shutdown signal and let process.exit() tear everything down.
+          client.call("shutdown", undefined).catch(() => {})
+        } else {
+          await withTimeout(client.call("shutdown", undefined), 5000).catch(() => {})
+          worker.terminate()
+        }
       }
 
       const prompt = await input(args.prompt)
@@ -299,7 +307,11 @@ export const TuiThreadCommand = cmd({
         unguard?.()
       } catch {}
     }
-    process.exit(0)
+    // On Windows we cannot await the worker shutdown or call
+    // worker.terminate() — both destroy the console window. The worker
+    // is still alive so the event loop won't drain; force-exit here.
+    // On other platforms the index.ts finally{} safety-net handles exit.
+    if (process.platform === "win32") process.exit(0)
   },
 })
 // scratch
