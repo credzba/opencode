@@ -1355,7 +1355,7 @@ export class Global extends HeyApiClient {
   /**
    * Upgrade opencode
    *
-   * Upgrade opencode to the specified version or latest if not specified.
+   * Upgrade opencode to the specified version.
    */
   public upgrade<ThrowOnError extends boolean = false>(
     parameters?: {
@@ -2328,7 +2328,6 @@ export class Auth2 extends HeyApiClient {
       directory?: string
       workspace?: string
       code?: string
-      iss?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2341,7 +2340,6 @@ export class Auth2 extends HeyApiClient {
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
             { in: "body", key: "code" },
-            { in: "body", key: "iss" },
           ],
         },
       ],

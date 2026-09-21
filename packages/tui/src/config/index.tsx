@@ -34,6 +34,14 @@ export const LinuxClipboardSelection = Schema.Literals(["clipboard", "primary", 
   description:
     "Linux clipboard selection: 'clipboard' (Ctrl+C), 'primary' (middle-click), or 'both' (default: 'both')",
 })
+export const Cursor = Schema.Struct({
+  style: Schema.optional(Schema.Literals(["block", "underline", "line", "default"])).annotate({
+    description: "Cursor shape. Use 'default' to preserve the terminal setting",
+  }),
+  blinking: Schema.optional(Schema.Boolean).annotate({
+    description: "Whether the cursor blinks. Has no effect when style is 'default'",
+  }),
+}).annotate({ description: "Terminal cursor settings" })
 
 export const AttentionSounds = Schema.Record(AttentionSoundName, Schema.optionalKey(Schema.String))
 export type AttentionSoundPaths = Schema.Schema.Type<typeof AttentionSounds>
@@ -66,6 +74,7 @@ export const Info = Schema.Struct({
   scroll_speed: Schema.optional(ScrollSpeed).annotate({ description: "TUI scroll speed" }),
   scroll_acceleration: Schema.optional(ScrollAcceleration),
   diff_style: Schema.optional(DiffStyle),
+  cursor: Schema.optional(Cursor),
   mouse: Schema.optional(Schema.Boolean).annotate({ description: "Enable or disable mouse capture (default: true)" }),
   linux_clipboard_selection: Schema.optional(LinuxClipboardSelection).annotate({
     description: "Linux clipboard selection: 'clipboard' (Ctrl+C), 'primary' (middle-click), or 'both' (default: 'both')",
@@ -73,7 +82,10 @@ export const Info = Schema.Struct({
 })
 export type Info = Schema.Schema.Type<typeof Info>
 
-export type Resolved = Omit<Info, "attention" | "keybinds" | "leader_timeout" | "mouse" | "linux_clipboard_selection"> & {
+export type Resolved = Omit<
+  Info,
+  "attention" | "keybinds" | "leader_timeout" | "mouse" | "linux_clipboard_selection" | "cursor"
+> & {
   attention: {
     enabled: boolean
     notifications: boolean
@@ -86,6 +98,10 @@ export type Resolved = Omit<Info, "attention" | "keybinds" | "leader_timeout" | 
   leader_timeout: number
   mouse: boolean
   linux_clipboard_selection: "clipboard" | "primary" | "both"
+  cursor?: {
+    style: "block" | "underline" | "line" | "default"
+    blinking: boolean
+  }
 }
 
 export const ResolveOptions = Schema.Struct({
@@ -122,6 +138,12 @@ export function resolve(input: Info, options: ResolveOptions): Resolved {
     leader_timeout: input.leader_timeout ?? LeaderTimeoutDefault,
     mouse: input.mouse ?? true,
     linux_clipboard_selection: input.linux_clipboard_selection ?? "both",
+    cursor: input.cursor
+      ? {
+          style: input.cursor.style ?? "block",
+          blinking: input.cursor.blinking ?? true,
+        }
+      : undefined,
   }
 }
 
