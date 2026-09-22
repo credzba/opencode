@@ -42,6 +42,42 @@ bun typecheck   # run from the package dirs (e.g. packages/opencode, packages/tu
 
 More generally, when a conflict is "fork feature vs upstream feature", keep both sides.
 
+## Windows symlinks (typecheck / pre-push)
+
+The repo tracks ~60 symlinks (git mode `120000`), including
+`packages/{app,enterprise}/src/custom-elements.d.ts`. On Windows with `core.symlinks=false`, git
+checks these out as plain text files containing the link target, so `tsgo` reports
+`TS1128: Declaration or statement expected` and `bun typecheck` (run by the husky `pre-push` hook)
+fails - often with a `Terminate batch job (Y/N)?` prompt as turbo kills sibling tasks.
+
+Run once in an **elevated (Administrator)** PowerShell, or after enabling Windows Developer Mode,
+from the repo root (working tree must be clean):
+
+```powershell
+git config core.symlinks true
+
+# Delete the placeholder text files git created for every tracked symlink
+git ls-files -s |
+  Select-String '^120000' |
+  ForEach-Object { ($_ -split "`t")[1] } |
+  ForEach-Object { Remove-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue }
+
+# Re-materialize them as real symlinks
+git checkout -- .
+```
+
+Verify:
+
+```powershell
+git config --get core.symlinks   # must print true
+git status --short               # clean
+Get-Item packages\enterprise\src\custom-elements.d.ts | Select-Object LinkType, Target
+bun typecheck
+```
+
+If symlink creation is still denied (no Developer Mode / not elevated), push with
+`git push --no-verify` to skip the hook.
+
 ## Version shown by local builds
 
 `packages/script/src/index.ts` computes the build version. For preview (non-`latest`) channels the
