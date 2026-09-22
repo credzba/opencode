@@ -4,6 +4,8 @@ import path from "path"
 
 const rootPkgPath = path.resolve(import.meta.dir, "../../../package.json")
 const rootPkg = await Bun.file(rootPkgPath).json()
+const opencodePkgPath = path.resolve(import.meta.dir, "../../../packages/opencode/package.json")
+const opencodePkg = await Bun.file(opencodePkgPath).json()
 const expectedBunVersion = rootPkg.packageManager?.split("@")[1]
 
 if (!expectedBunVersion) {
@@ -33,7 +35,9 @@ const IS_PREVIEW = CHANNEL !== "latest"
 
 const VERSION = await (async () => {
   if (env.OPENCODE_VERSION) return env.OPENCODE_VERSION
-  if (IS_PREVIEW) return `0.0.0-${CHANNEL}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`
+  // Preview builds use the version synced into packages/opencode/package.json
+  // instead of a 0.0.0-<channel> placeholder.
+  if (IS_PREVIEW) return opencodePkg.version
   const version = await fetch("https://registry.npmjs.org/opencode-ai/latest")
     .then((res) => {
       if (!res.ok) throw new Error(res.statusText)
